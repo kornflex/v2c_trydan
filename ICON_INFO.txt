@@ -1,0 +1,28 @@
+INFORMATION SUR L'ICÔNE DU PLUGIN
+==================================
+
+Nom du fichier: v2c_trydan_icon.png
+Emplacement: plugin_info/v2c_trydan_icon.png
+
+Spécifications:
+- Taille: 512x512 pixels
+- Format: PNG avec fond transparent
+- Thème: Borne de recharge électrique / V2C
+- Couleur suggérée: Vert (#5cb85c) pour l'énergie
+
+Suggestions de design:
+1. Un éclair (⚡) stylisé
+2. Une prise de charge pour véhicule électrique
+3. Le logo V2C (si autorisé)
+4. Une combinaison d'éléments électriques et automobiles
+
+Vous pouvez utiliser des outils comme:
+- GIMP (gratuit)
+- Photoshop
+- Inkscape (vectoriel)
+- Figma (en ligne)
+
+Ou chercher une icône libre de droits sur:
+- flaticon.com
+- iconify.design
+- fontawesome.com

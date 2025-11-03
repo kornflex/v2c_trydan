@@ -1,0 +1,60 @@
+/* Style personnalisé pour le plugin V2C Trydan */
+
+.v2c-status-charging {
+    color: #5cb85c;
+    font-weight: bold;
+}
+
+.v2c-status-idle {
+    color: #0275d8;
+}
+
+.v2c-status-error {
+    color: #d9534f;
+    font-weight: bold;
+}
+
+.v2c-status-waiting {
+    color: #f0ad4e;
+}
+
+.eqLogicDisplayCard.v2c_trydan {
+    position: relative;
+}
+
+.v2c-power-indicator {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #5cb85c, #4cae4c);
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.v2c-info-box {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+    border-left: 4px solid #5cb85c;
+}
+
+.v2c-warning-box {
+    background: #fcf8e3;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+    border-left: 4px solid #f0ad4e;
+}
+
+/* Animation pour l'indicateur de charge */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.v2c-charging {
+    animation: pulse 2s infinite;
+}

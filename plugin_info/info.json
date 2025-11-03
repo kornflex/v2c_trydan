@@ -1,0 +1,16 @@
+{
+  "id": "v2c_trydan",
+  "name": "V2C Trydan",
+  "description": "Plugin pour gérer les bornes de recharge V2C Trydan via l'API Cloud",
+  "licence": "AGPL",
+  "author": "Votre Nom",
+  "require": "4.0",
+  "category": "energy",
+  "hasDependency": false,
+  "hasOwnDeamon": false,
+  "maxDependancyInstallTime": 0,
+  "changelog": "https://github.com/votre-repo/v2c_trydan/blob/master/docs/changelog.md",
+  "documentation": "https://github.com/votre-repo/v2c_trydan/blob/master/docs/fr_FR/index.md",
+  "language": ["fr_FR", "en_US"],
+  "compatibility": ["miniplus", "smart", "rpi", "docker", "diy", "mobile", "v4"]
+}

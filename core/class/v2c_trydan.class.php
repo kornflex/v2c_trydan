@@ -19,13 +19,15 @@ require_once dirname(__FILE__) . '/../../../../core/php/core.inc.php';
 
 class v2c_trydan extends eqLogic {
     
-    const API_BASE_URL = 'https://v2c.cloud/api/v1';
+    const API_BASE_URL = 'https://v2c.cloud/kong/v2c_service';
     
     /*     * ***********************Méthodes statiques*************************** */
     
     public static function cronHourly() {
         foreach (eqLogic::byType('v2c_trydan', true) as $eqLogic) {
             $eqLogic->refresh();
+            $eqLogic->getGlobalStats();
+            $eqLogic->getSessionStats();
         }
     }
     
@@ -33,6 +35,10 @@ class v2c_trydan extends eqLogic {
         foreach (eqLogic::byType('v2c_trydan', true) as $eqLogic) {
             if ($eqLogic->getConfiguration('refresh_frequency', 'hourly') == '15min') {
                 $eqLogic->refresh();
+                if (date('i') == '00') { // Une fois par heure
+                    $eqLogic->getGlobalStats();
+                    $eqLogic->getSessionStats();
+                }
             }
         }
     }
@@ -41,6 +47,10 @@ class v2c_trydan extends eqLogic {
         foreach (eqLogic::byType('v2c_trydan', true) as $eqLogic) {
             if ($eqLogic->getConfiguration('refresh_frequency', 'hourly') == '5min') {
                 $eqLogic->refresh();
+                if (date('i') == '00') { // Une fois par heure
+                    $eqLogic->getGlobalStats();
+                    $eqLogic->getSessionStats();
+                }
             }
         }
     }
@@ -60,16 +70,22 @@ class v2c_trydan extends eqLogic {
     }
     
     public function postSave() {
-        // Commandes Info
+        // Commandes Info principales
+        $this->createCommand('connected', 'info', 'binary', 'Connecté');
         $this->createCommand('status', 'info', 'string', 'État', 'core::tile');
-        $this->createCommand('power', 'info', 'numeric', 'Puissance', 'core::badge', 'W');
+        $this->createCommand('power', 'info', 'numeric', 'Puissance de charge', 'core::badge', 'kW');
         $this->createCommand('energy', 'info', 'numeric', 'Énergie', 'core::badge', 'kWh');
         $this->createCommand('intensity', 'info', 'numeric', 'Intensité', 'core::badge', 'A');
+        $this->createCommand('voltage', 'info', 'numeric', 'Tension', 'core::badge', 'V');
         $this->createCommand('locked', 'info', 'binary', 'Verrouillé');
         $this->createCommand('paused', 'info', 'binary', 'En pause');
         $this->createCommand('dynamic_mode', 'info', 'binary', 'Mode dynamique');
         $this->createCommand('charge_time', 'info', 'numeric', 'Temps de charge', 'core::badge', 'min');
         $this->createCommand('charge_energy', 'info', 'numeric', 'Énergie session', 'core::badge', 'kWh');
+        
+        // Commandes Info pour le photovoltaïque
+        $this->createCommand('house_power', 'info', 'numeric', 'Puissance maison', 'core::badge', 'kW');
+        $this->createCommand('sun_power', 'info', 'numeric', 'Puissance solaire', 'core::badge', 'kW');
         
         // Commandes Action
         $refreshCmd = $this->createCommand('refresh', 'action', 'other', 'Rafraîchir');
@@ -90,6 +106,27 @@ class v2c_trydan extends eqLogic {
         $modeCmd = $this->createCommand('set_mode', 'action', 'select', 'Mode de charge');
         $modeCmd->setConfiguration('listValue', 'stop|Stop;charge|Charge;dynamic|Dynamique;solar|Solaire');
         $modeCmd->save();
+
+        // Commandes pour la gestion RFID
+        $this->createCommand('rfid_state', 'info', 'binary', 'RFID activé');
+        $this->createCommand('rfid_list', 'info', 'string', 'Liste badges RFID');
+        $this->createCommand('rfid_enable', 'action', 'other', 'Activer RFID');
+        $this->createCommand('rfid_disable', 'action', 'other', 'Désactiver RFID');
+        $this->createCommand('rfid_add', 'action', 'message', 'Ajouter badge RFID');
+        $this->createCommand('rfid_delete', 'action', 'message', 'Supprimer badge RFID');
+
+        // Commandes pour les profils de puissance
+        $this->createCommand('power_profile_save', 'action', 'message', 'Sauver profil');
+        $this->createCommand('power_profile_list', 'info', 'string', 'Liste profils');
+        $this->createCommand('power_profile_delete', 'action', 'message', 'Supprimer profil');
+
+        // Commande pour la version du firmware
+        $this->createCommand('firmware_version', 'info', 'string', 'Version firmware');
+
+        // Commandes pour les statistiques
+        $this->createCommand('stats_total_energy', 'info', 'numeric', 'Énergie totale', 'core::badge', 'kWh');
+        $this->createCommand('stats_total_charges', 'info', 'numeric', 'Charges totales');
+        $this->createCommand('stats_last_sessions', 'info', 'string', 'Dernières sessions');
         
         // Premier refresh après création
         if ($this->getConfiguration('first_sync', true)) {
@@ -134,22 +171,39 @@ class v2c_trydan extends eqLogic {
     
     public function refresh() {
         try {
-            $data = $this->callAPI('GET', '/chargers/' . $this->getConfiguration('charger_id'));
+            $deviceId = $this->getConfiguration('charger_id');
+            $this->isConnected(); // Vérifie d'abord l'état de connexion
+            $this->getRFIDState(); // Vérifie l'état du RFID
+            $data = $this->callAPI('POST', '/device/currentstatecharge?deviceId=' . $deviceId);
             
             if ($data) {
-                $this->updateCommand('status', $data['status'] ?? 'unknown');
-                $this->updateCommand('power', $data['power'] ?? 0);
-                $this->updateCommand('energy', $data['total_energy'] ?? 0);
-                $this->updateCommand('intensity', $data['current'] ?? 0);
-                $this->updateCommand('locked', $data['locked'] ?? false);
-                $this->updateCommand('paused', $data['paused'] ?? false);
-                $this->updateCommand('dynamic_mode', $data['dynamic_mode'] ?? false);
-                
-                // Informations de session de charge
-                if (isset($data['session'])) {
-                    $this->updateCommand('charge_time', $data['session']['duration'] ?? 0);
-                    $this->updateCommand('charge_energy', $data['session']['energy'] ?? 0);
+                // Mise à jour des statuts
+                $charge_state = $data['charge_state'] ?? 0;
+                $status = 'unknown';
+                switch($charge_state) {
+                    case 0: $status = 'disconnected'; break;
+                    case 1: $status = 'connected'; break;
+                    case 2: $status = 'charging'; break;
+                    case 3: $status = 'paused'; break;
+                    case 4: $status = 'error'; break;
                 }
+                
+                $this->updateCommand('status', $status);
+                $this->updateCommand('power', $data['power'] ?? 0);
+                $this->updateCommand('energy', $data['energy'] ?? 0);
+                $this->updateCommand('intensity', $data['intensity'] ?? 0);
+                $this->updateCommand('locked', $data['error'] == '244' ? true : false);
+                $this->updateCommand('paused', $charge_state == 3);
+                $this->updateCommand('dynamic_mode', $data['photovoltaic_on'] ?? false);
+                
+                // Informations de session
+                $this->updateCommand('charge_time', $data['seconds'] ? round($data['seconds'] / 60) : 0);
+                $this->updateCommand('charge_energy', $data['energy'] ?? 0);
+                
+                // Informations additionnelles
+                $this->updateCommand('voltage', $data['voltage'] ?? 0);
+                $this->updateCommand('house_power', $data['house_power'] ?? 0);
+                $this->updateCommand('sun_power', $data['sun_power'] ?? 0);
                 
                 log::add('v2c_trydan', 'debug', 'Refresh réussi pour ' . $this->getName());
             }
@@ -178,7 +232,7 @@ class v2c_trydan extends eqLogic {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $token,
+            'apikey: ' . $token,
             'Content-Type: application/json'
         ]);
         
@@ -211,36 +265,148 @@ class v2c_trydan extends eqLogic {
     }
     
     public function startCharging() {
-        return $this->callAPI('POST', '/chargers/' . $this->getConfiguration('charger_id') . '/start');
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/startcharge?deviceId=' . $deviceId);
     }
     
     public function stopCharging() {
-        return $this->callAPI('POST', '/chargers/' . $this->getConfiguration('charger_id') . '/stop');
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/pausecharge?deviceId=' . $deviceId);
     }
     
     public function pauseCharging() {
-        return $this->callAPI('POST', '/chargers/' . $this->getConfiguration('charger_id') . '/pause');
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/pausecharge?deviceId=' . $deviceId);
     }
     
     public function resumeCharging() {
-        return $this->callAPI('POST', '/chargers/' . $this->getConfiguration('charger_id') . '/resume');
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/startcharge?deviceId=' . $deviceId);
     }
     
     public function lockCharger() {
-        return $this->callAPI('POST', '/chargers/' . $this->getConfiguration('charger_id') . '/lock');
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/locked?deviceId=' . $deviceId . '&value=1');
     }
     
     public function unlockCharger() {
-        return $this->callAPI('POST', '/chargers/' . $this->getConfiguration('charger_id') . '/unlock');
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/locked?deviceId=' . $deviceId . '&value=0');
     }
     
     public function setIntensity($value) {
+        $deviceId = $this->getConfiguration('charger_id');
         $value = max(6, min(32, intval($value)));
-        return $this->callAPI('PUT', '/chargers/' . $this->getConfiguration('charger_id') . '/intensity', ['value' => $value]);
+        return $this->callAPI('POST', '/device/intensity?deviceId=' . $deviceId . '&value=' . $value);
     }
     
     public function setMode($mode) {
-        return $this->callAPI('PUT', '/chargers/' . $this->getConfiguration('charger_id') . '/mode', ['mode' => $mode]);
+        $deviceId = $this->getConfiguration('charger_id');
+        switch($mode) {
+            case 'stop':
+                return $this->stopCharging();
+            case 'charge':
+                return $this->startCharging();
+            case 'dynamic':
+                return $this->callAPI('POST', '/device/dynamic?deviceId=' . $deviceId . '&value=1');
+            case 'solar':
+                return $this->callAPI('POST', '/device/chargefvmode?deviceId=' . $deviceId . '&value=1');
+        }
+    }
+
+    // Méthodes RFID
+    public function enableRFID() {
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/set_rfid?deviceId=' . $deviceId . '&value=1');
+    }
+
+    public function disableRFID() {
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/set_rfid?deviceId=' . $deviceId . '&value=0');
+    }
+
+    public function getRFIDList() {
+        $deviceId = $this->getConfiguration('charger_id');
+        $response = $this->callAPI('GET', '/device/rfid_list?deviceId=' . $deviceId);
+        $this->updateCommand('rfid_list', json_encode($response));
+        return $response;
+    }
+
+    public function addRFID($name) {
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/rfid_add?deviceId=' . $deviceId . '&tag=' . urlencode($name));
+    }
+
+    public function deleteRFID($name) {
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('POST', '/device/rfid_delete?deviceId=' . $deviceId . '&tag=' . urlencode($name));
+    }
+
+    public function getRFIDState() {
+        $deviceId = $this->getConfiguration('charger_id');
+        $response = $this->callAPI('GET', '/device/rfid_state?deviceId=' . $deviceId);
+        $this->updateCommand('rfid_state', $response['enabled'] ?? false);
+        return $response;
+    }
+
+
+    // Méthodes Profils de puissance
+    public function savePowerProfile($name, $mode, $value) {
+        $deviceId = $this->getConfiguration('charger_id');
+        $data = [
+            'mode' => $mode,
+            'value' => intval($value)
+        ];
+        return $this->callAPI('POST', '/device/savepersonalicepower/v2?deviceId=' . $deviceId . 
+            '&name=' . urlencode($name) . '&updateAt=' . urlencode(date('c')), $data);
+    }
+
+    public function getPowerProfiles() {
+        $deviceId = $this->getConfiguration('charger_id');
+        $response = $this->callAPI('GET', '/device/personalicepower/all?deviceId=' . $deviceId);
+        $this->updateCommand('power_profile_list', json_encode($response));
+        return $response;
+    }
+
+    public function deletePowerProfile($name) {
+        $deviceId = $this->getConfiguration('charger_id');
+        return $this->callAPI('DELETE', '/device/personalicepower/v2?deviceId=' . $deviceId . 
+            '&name=' . urlencode($name) . '&updateAt=' . urlencode(date('c')));
+    }
+
+    // Méthode Firmware
+    public function getFirmwareVersion() {
+        $deviceId = $this->getConfiguration('charger_id');
+        $response = $this->callAPI('GET', '/version?deviceId=' . $deviceId);
+        if (isset($response['versionId'])) {
+            $this->updateCommand('firmware_version', $response['versionId']);
+        }
+        return $response;
+    }
+
+    // Méthode de connexion
+    public function isConnected() {
+        $deviceId = $this->getConfiguration('charger_id');
+        $response = $this->callAPI('GET', '/device/connected?deviceId=' . $deviceId);
+        $this->updateCommand('connected', $response['connected'] ?? false);
+        return $response;
+    }
+
+    // Méthodes Statistiques
+    public function getGlobalStats() {
+        $response = $this->callAPI('GET', '/stadistic/global/me');
+        if (isset($response[0])) {
+            $this->updateCommand('stats_total_energy', $response[0]['totalEnergy'] ?? 0);
+            $this->updateCommand('stats_total_charges', $response[0]['totalCharges'] ?? 0);
+        }
+        return $response;
+    }
+
+    public function getSessionStats() {
+        $deviceId = $this->getConfiguration('charger_id');
+        $response = $this->callAPI('GET', '/stadistic/device?deviceId=' . $deviceId);
+        $this->updateCommand('stats_last_sessions', json_encode($response));
+        return $response;
     }
 }
 
@@ -250,8 +416,12 @@ class v2c_trydanCmd extends cmd {
         $eqLogic = $this->getEqLogic();
         
         switch ($this->getLogicalId()) {
+            // Commandes de base
             case 'refresh':
                 $eqLogic->refresh();
+                $eqLogic->getFirmwareVersion();
+                $eqLogic->getGlobalStats();
+                $eqLogic->getSessionStats();
                 break;
                 
             case 'start':
@@ -305,6 +475,56 @@ class v2c_trydanCmd extends cmd {
                     $eqLogic->refresh();
                 }
                 break;
+
+            // Commandes RFID
+            case 'rfid_enable':
+                $eqLogic->enableRFID();
+                sleep(2);
+                $eqLogic->getRFIDState();
+                $eqLogic->getRFIDList();
+                break;
+
+            case 'rfid_disable':
+                $eqLogic->disableRFID();
+                sleep(2);
+                $eqLogic->getRFIDState();
+                break;
+
+            case 'rfid_add':
+                if (isset($_options['title']) && !empty($_options['title'])) {
+                    $eqLogic->addRFID($_options['title']);
+                    sleep(2);
+                    $eqLogic->getRFIDList();
+                }
+                break;
+
+            case 'rfid_delete':
+                if (isset($_options['title']) && !empty($_options['title'])) {
+                    $eqLogic->deleteRFID($_options['title']);
+                    sleep(2);
+                    $eqLogic->getRFIDList();
+                }
+                break;
+
+            // Commandes profils de puissance
+            case 'power_profile_save':
+                if (isset($_options['title']) && !empty($_options['title']) && isset($_options['message'])) {
+                    list($mode, $value) = explode('|', $_options['message']);
+                    $eqLogic->savePowerProfile($_options['title'], $mode, $value);
+                    sleep(2);
+                    $eqLogic->getPowerProfiles();
+                }
+                break;
+
+            case 'power_profile_delete':
+                if (isset($_options['title']) && !empty($_options['title'])) {
+                    $eqLogic->deletePowerProfile($_options['title']);
+                    sleep(2);
+                    $eqLogic->getPowerProfiles();
+                }
+                break;
+
+
         }
     }
 }

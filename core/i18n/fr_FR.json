@@ -30,15 +30,40 @@
     "plugins\/v2c_trydan\/core\/class\/v2c_trydan.class.php": {
         "Le token API est obligatoire": "Le token API est obligatoire",
         "L'ID du chargeur est obligatoire": "L'ID du chargeur est obligatoire",
+        "Token API non configuré": "Token API non configuré",
+
+        "Connecté": "Connecté",
         "État": "État",
         "Puissance": "Puissance",
         "Énergie": "Énergie",
         "Intensité": "Intensité",
+        "Tension": "Tension",
         "Verrouillé": "Verrouillé",
         "En pause": "En pause",
         "Mode dynamique": "Mode dynamique",
         "Temps de charge": "Temps de charge",
         "Énergie session": "Énergie session",
+        "Puissance maison": "Puissance maison",
+        "Puissance solaire": "Puissance solaire",
+        "Version firmware": "Version firmware",
+
+        "RFID activé": "RFID activé",
+        "Liste badges RFID": "Liste badges RFID",
+        "Activer RFID": "Activer RFID",
+        "Désactiver RFID": "Désactiver RFID",
+        "Ajouter badge RFID": "Ajouter badge RFID",
+        "Supprimer badge RFID": "Supprimer badge RFID",
+
+        "Liste profils": "Liste profils",
+        "Sauver profil": "Sauver profil",
+        "Supprimer profil": "Supprimer profil",
+        "Erreur lors de la sauvegarde du profil": "Erreur lors de la sauvegarde du profil",
+        "Erreur lors de la suppression du profil": "Erreur lors de la suppression du profil",
+
+        "Énergie totale": "Énergie totale",
+        "Charges totales": "Charges totales",
+        "Dernières sessions": "Dernières sessions",
+
         "Rafraîchir": "Rafraîchir",
         "Démarrer": "Démarrer",
         "Arrêter": "Arrêter",
@@ -48,6 +73,10 @@
         "Déverrouiller": "Déverrouiller",
         "Régler intensité": "Régler intensité",
         "Mode de charge": "Mode de charge",
-        "Token API non configuré": "Token API non configuré"
+
+        "Mode Stop": "Mode Stop",
+        "Mode Charge": "Mode Charge",
+        "Mode Dynamique": "Mode Dynamique",
+        "Mode Solaire": "Mode Solaire"
     }
 }

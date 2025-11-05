@@ -30,15 +30,40 @@
     "plugins\/v2c_trydan\/core\/class\/v2c_trydan.class.php": {
         "Le token API est obligatoire": "API token is required",
         "L'ID du chargeur est obligatoire": "Charger ID is required",
+        "Token API non configuré": "API token not configured",
+
+        "Connecté": "Connected",
         "État": "Status",
         "Puissance": "Power",
         "Énergie": "Energy",
         "Intensité": "Current",
+        "Tension": "Voltage",
         "Verrouillé": "Locked",
         "En pause": "Paused",
         "Mode dynamique": "Dynamic mode",
-        "Temps de charge": "Charge time",
+        "Temps de charge": "Charging time",
         "Énergie session": "Session energy",
+        "Puissance maison": "House power",
+        "Puissance solaire": "Solar power",
+        "Version firmware": "Firmware version",
+
+        "RFID activé": "RFID enabled",
+        "Liste badges RFID": "RFID badges list",
+        "Activer RFID": "Enable RFID",
+        "Désactiver RFID": "Disable RFID",
+        "Ajouter badge RFID": "Add RFID badge",
+        "Supprimer badge RFID": "Delete RFID badge",
+
+        "Liste profils": "Profile list",
+        "Sauver profil": "Save profile",
+        "Supprimer profil": "Delete profile",
+        "Erreur lors de la sauvegarde du profil": "Error during profile saving",
+        "Erreur lors de la suppression du profil": "Error during profile deletion",
+
+        "Énergie totale": "Total energy",
+        "Charges totales": "Total charges",
+        "Dernières sessions": "Last sessions",
+
         "Rafraîchir": "Refresh",
         "Démarrer": "Start",
         "Arrêter": "Stop",
@@ -48,6 +73,10 @@
         "Déverrouiller": "Unlock",
         "Régler intensité": "Set current",
         "Mode de charge": "Charge mode",
-        "Token API non configuré": "API token not configured"
+
+        "Mode Stop": "Stop Mode",
+        "Mode Charge": "Charge Mode",
+        "Mode Dynamique": "Dynamic Mode",
+        "Mode Solaire": "Solar Mode"
     }
 }

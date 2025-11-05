@@ -23,102 +23,6 @@ Ce plugin permet de contrôler et superviser votre borne de recharge V2C Trydan 
 - Un token API V2C Cloud
 - PHP avec support cURL
 
-## 🚀 Installation
-
-### Méthode 1 : Installation automatique (recommandée)
-
-1. **Téléchargez tous les scripts** fournis dans les artifacts ci-dessus
-
-2. **Rendez les scripts exécutables** :
-```bash
-chmod +x v2c_trydan_structure.sh
-chmod +x v2c_trydan_desktop.sh
-chmod +x v2c_trydan_i18n_docs.sh
-chmod +x install_all.sh
-chmod +x create_plugin_zip.sh
-chmod +x verify_structure.sh
-```
-
-3. **Exécutez le script d'installation complet** :
-```bash
-bash install_all.sh
-```
-
-### Méthode 2 : Installation manuelle
-
-1. **Créez la structure de base** :
-```bash
-bash v2c_trydan_structure.sh
-```
-
-2. **Créez les fichiers desktop** :
-```bash
-bash v2c_trydan_desktop.sh
-```
-
-3. **Créez les traductions et documentation** :
-```bash
-bash v2c_trydan_i18n_docs.sh
-```
-
-4. **Créez le fichier ZIP** :
-```bash
-bash create_plugin_zip.sh
-```
-
-## 🎨 Création de l'icône (IMPORTANT)
-
-Le plugin nécessite une icône pour s'afficher correctement dans Jeedom.
-
-### Option 1 : Créer une icône basique avec ImageMagick
-```bash
-cd v2c_trydan
-bash create_icon.sh
-```
-
-### Option 2 : Créer une icône personnalisée
-
-**Spécifications** :
-- **Nom** : `v2c_trydan_icon.png`
-- **Emplacement** : `v2c_trydan/plugin_info/v2c_trydan_icon.png`
-- **Taille** : 512x512 pixels
-- **Format** : PNG avec fond transparent
-- **Thème** : Borne de recharge / Énergie
-
-**Suggestions de design** :
-- Un éclair (⚡) stylisé en vert
-- Une prise de charge pour véhicule électrique
-- Symbole d'énergie renouvelable
-- Couleur recommandée : Vert #5cb85c
-
-**Outils suggérés** :
-- GIMP (gratuit)
-- Inkscape (vectoriel)
-- Figma (en ligne)
-- Ou téléchargez une icône sur flaticon.com, iconify.design
-
-## ✅ Vérification
-
-Avant de créer le ZIP final, vérifiez que tout est correct :
-
-```bash
-bash verify_structure.sh
-```
-
-Cette commande vérifiera :
-- ✅ Tous les fichiers obligatoires
-- ⚠️ Les fichiers recommandés (y compris l'icône)
-
-## 📦 Création du ZIP final
-
-Une fois l'icône créée et la structure vérifiée :
-
-```bash
-bash create_plugin_zip.sh
-```
-
-Cela créera le fichier **`v2c_trydan.zip`** prêt à être installé dans Jeedom.
-
 ## 🔧 Installation dans Jeedom
 
 1. Connectez-vous à votre Jeedom
@@ -158,19 +62,42 @@ Le plugin créera automatiquement toutes les commandes nécessaires.
 
 ## 📊 Commandes disponibles
 
-### Commandes Info
+### Commandes Info principales
+- **Connecté** : État de connexion de la borne
+- **RFID activé** : État d'activation du module RFID
+- **Liste badges RFID** : Liste des badges RFID enregistrés
 - **État** : État actuel de la borne
-- **Puissance** : Puissance de charge (W)
+- **Puissance** : Puissance de charge (kW)
 - **Énergie** : Énergie totale (kWh)
 - **Intensité** : Intensité de charge (A)
+- **Tension** : Tension réseau (V)
 - **Verrouillé** : État du verrouillage
 - **En pause** : État de pause
 - **Mode dynamique** : Mode dynamique actif
 - **Temps de charge** : Durée session (min)
 - **Énergie session** : Énergie session (kWh)
 
+### Commandes Info photovoltaïques
+- **Puissance maison** : Consommation totale maison (kW)
+- **Puissance solaire** : Production solaire (kW)
+
+### Commandes Info profils
+- **Liste profils** : Liste des profils de puissance (JSON)
+
+### Commandes Info firmware
+- **Version firmware** : Version actuelle du firmware
+
+### Commandes Info statistiques
+- **Énergie totale** : Total kWh chargés
+- **Charges totales** : Nombre total de sessions
+- **Dernières sessions** : Historique des charges (JSON)
+
 ### Commandes Action
 - **Rafraîchir** : Mise à jour manuelle
+- **Activer RFID** : Active le module RFID
+- **Désactiver RFID** : Désactive le module RFID
+- **Ajouter badge RFID** : Mode apprentissage d'un nouveau badge
+- **Supprimer badge RFID** : Supprime un badge existant
 - **Démarrer** : Démarrer la charge
 - **Arrêter** : Arrêter la charge
 - **Pause** : Mettre en pause
@@ -178,37 +105,136 @@ Le plugin créera automatiquement toutes les commandes nécessaires.
 - **Verrouiller** : Verrouiller la borne
 - **Déverrouiller** : Déverrouiller la borne
 - **Régler intensité** : Définir l'intensité (6-32A)
-- **Mode de charge** : Changer le mode
+- **Mode de charge** : Changer le mode (Stop/Charge/Dynamique/Solaire)
+
+### Commandes Action RFID
+- **Activer RFID** : Active le lecteur RFID
+- **Désactiver RFID** : Désactive le lecteur RFID
+
+### Commandes Action profils
+- **Sauver profil** : Crée un profil (title=nom, message=mode|valeur)
+- **Supprimer profil** : Supprime un profil (message=nom)
+
+
 
 ## 🎬 Exemples de scénarios
 
-### Démarrer la charge en heures creuses
+### Scénarios de charge basiques
+
+#### Démarrer la charge en heures creuses
 ```
 SI [Tarif EDF][Mode] == "Heures Creuses"
 ALORS [Borne Garage][Démarrer]
 ```
 
-### Charge intelligente selon production solaire
+#### Charge intelligente selon production solaire
 ```
-SI [Panneaux Solaires][Production] > 3000
+SI [Borne Garage][Puissance solaire] > 3.0
 ALORS [Borne Garage][Régler intensité] = 20
-SINON SI [Panneaux Solaires][Production] > 1500
+SINON SI [Borne Garage][Puissance solaire] > 1.5
 ALORS [Borne Garage][Régler intensité] = 10
 SINON [Borne Garage][Pause]
 ```
 
-### Notification fin de charge
+#### Notification fin de charge
 ```
 SI [Borne Garage][État] == "completed"
 ALORS Envoyer notification "🔋 Charge terminée : {[Borne Garage][Énergie session]} kWh"
 ```
 
-### Arrêt automatique si charge complète
+#### Arrêt automatique si charge complète
 ```
 SI [Borne Garage][Énergie session] >= 50
 ALORS [Borne Garage][Arrêter]
 ET Envoyer notification "Charge arrêtée à 50 kWh"
 ```
+
+### Scénarios RFID avancés
+
+#### Enregistrement automatique de badge
+```
+A PROGRAMMATION
+# Le matin à 9h
+[Borne Garage][Activer RFID]
+[Borne Garage][Apprendre RFID] = "Badge Visiteur"
+# Attendre 30 secondes que le badge soit présenté
+PAUSE 30
+[Borne Garage][Désactiver RFID]
+```
+
+### Scénarios de gestion de puissance
+
+#### Profil été/hiver
+```
+SI [Système][Mois] >= "04" ET [Système][Mois] <= "09"
+ALORS [Borne Garage][Sauver profil] = "Été|solar|32"
+SINON [Borne Garage][Sauver profil] = "Hiver|dynamic|16"
+```
+
+#### Adaptation à la consommation maison
+```
+SI [Borne Garage][Puissance maison] > 8.0
+ALORS [Borne Garage][Régler intensité] = 16
+SINON [Borne Garage][Régler intensité] = 32
+```
+
+### Scénarios RFID
+
+#### Activation temporaire du RFID
+```
+SI [Borne Garage][État] == "connected"
+ALORS
+  [Borne Garage][Activer RFID]
+  PAUSE 300 # 5 minutes
+  [Borne Garage][Désactiver RFID]
+```
+
+#### Gestion des badges
+```
+A PROGRAMMATION
+# Tous les lundis à 8h
+[Borne Garage][Ajouter badge RFID] = "Badge Visiteur"
+PAUSE 30
+SI [Borne Garage][Liste badges RFID] contient "Badge Visiteur"
+ALORS Envoyer notification "Badge ajouté avec succès"
+```
+
+### Scénarios de maintenance
+
+#### Mise à jour firmware automatique
+```
+A PROGRAMMATION
+# Tous les premiers du mois à 3h du matin
+[Borne Garage][Mise à jour firmware]
+PAUSE 300
+SI [Borne Garage][Version firmware] a changé
+ALORS Envoyer notification "✅ Mise à jour firmware réussie"
+SINON Envoyer notification "❌ Échec mise à jour firmware"
+```
+
+#### Rapport hebdomadaire
+```
+A PROGRAMMATION
+# Chaque dimanche soir
+VAR sessions = [Borne Garage][Dernières sessions]
+VAR total = [Borne Garage][Énergie totale]
+Envoyer notification "📊 Rapport hebdo :\n
+Total : {total} kWh\n
+Sessions : {sessions}"
+```
+
+### Scénarios de sécurité
+
+#### Protection surcharge réseau
+```
+SI [Borne Garage][Puissance maison] > 9.0
+ET [Borne Garage][État] == "charging"
+ALORS
+  [Borne Garage][Pause]
+  Envoyer notification "⚠️ Pause charge - Surcharge réseau"
+```
+
+
 
 ## 🐛 Dépannage
 
@@ -284,9 +310,18 @@ bash create_plugin_zip.sh
 
 Le plugin utilise les endpoints suivants de l'API V2C Cloud :
 
-- `GET /chargers/{id}` - Récupérer l'état de la borne
-- `POST /chargers/{id}/start` - Démarrer la charge
-- `POST /chargers/{id}/stop` - Arrêter la charge
+- `POST /device/currentstatecharge` - État actuel de la charge
+- `GET /device/connected` - État de connexion de la borne
+- `GET /version` - Version du firmware
+- `POST /device/startcharge` - Démarrer la charge
+- `POST /device/pausecharge` - Mettre en pause
+- `POST /device/locked` - Verrouiller/déverrouiller
+- `POST /device/intensity` - Régler l'intensité
+- `POST /device/dynamic` - Mode dynamique
+- `POST /device/chargefvmode` - Mode solaire
+- `POST /device/personalicepower/v2` - Gestion des profils
+- `GET /stadistic/global/me` - Statistiques globales
+- `GET /stadistic/device` - Sessions de charge
 - `POST /chargers/{id}/pause` - Mettre en pause
 - `POST /chargers/{id}/resume` - Reprendre la charge
 - `POST /chargers/{id}/lock` - Verrouiller

@@ -1,3 +1,12 @@
+# 🚨 Préambule
+
+Je ne suis pas développeur, le code n'est peut être pas propre.
+Venant d'installer cette borne j'ai créé ce plugin car il était manquant sur Jeedom.
+Cependant, je n'ai pas encore la voiture, je ne peux donc valider si toutes les fonctionnalités sont opérationnelles.
+
+Je compte sur la communauté pour améliorer, corriger et faire évoluer ce plugin.
+
+
 # Guide d'Installation du Plugin V2C Trydan pour Jeedom
 
 ## 📦 Vue d'ensemble

@@ -108,12 +108,8 @@ class v2c_trydan extends eqLogic {
         $modeCmd->save();
 
         // Commandes pour la gestion RFID
-        $this->createCommand('rfid_state', 'info', 'binary', 'RFID activé');
-        $this->createCommand('rfid_list', 'info', 'string', 'Liste badges RFID');
         $this->createCommand('rfid_enable', 'action', 'other', 'Activer RFID');
         $this->createCommand('rfid_disable', 'action', 'other', 'Désactiver RFID');
-        $this->createCommand('rfid_add', 'action', 'message', 'Ajouter badge RFID');
-        $this->createCommand('rfid_delete', 'action', 'message', 'Supprimer badge RFID');
 
         // Commandes pour les profils de puissance
         $this->createCommand('power_profile_save', 'action', 'message', 'Sauver profil');
@@ -127,6 +123,19 @@ class v2c_trydan extends eqLogic {
         $this->createCommand('stats_total_energy', 'info', 'numeric', 'Énergie totale', 'core::badge', 'kWh');
         $this->createCommand('stats_total_charges', 'info', 'numeric', 'Charges totales');
         $this->createCommand('stats_last_sessions', 'info', 'string', 'Dernières sessions');
+
+        // Commandes pour les 5 dernières sessions
+        for ($i = 0; $i < 5; $i++) {
+            $prefix = 'session_' . $i . '_';
+            $label = ($i == 0) ? "Dernière charge" : "Charge J-" . $i;
+            $this->createCommand($prefix . 'debut', 'info', 'string', $label . ' - Début');
+            $this->createCommand($prefix . 'fin', 'info', 'string', $label . ' - Fin');
+            $this->createCommand($prefix . 'duree', 'info', 'string', $label . ' - Durée');
+            $this->createCommand($prefix . 'energie', 'info', 'numeric', $label . ' - Énergie', 'core::badge', 'kWh');
+            $this->createCommand($prefix . 'cout', 'info', 'numeric', $label . ' - Coût', 'core::badge', '€');
+            $this->createCommand($prefix . 'badge', 'info', 'string', $label . ' - Badge RFID');
+            $this->createCommand($prefix . 'message', 'info', 'string', $label . ' - Message');
+        }
         
         // Premier refresh après création
         if ($this->getConfiguration('first_sync', true)) {
@@ -173,7 +182,6 @@ class v2c_trydan extends eqLogic {
         try {
             $deviceId = $this->getConfiguration('charger_id');
             $this->isConnected(); // Vérifie d'abord l'état de connexion
-            $this->getRFIDState(); // Vérifie l'état du RFID
             $data = $this->callAPI('POST', '/device/currentstatecharge?deviceId=' . $deviceId);
             
             if ($data) {
@@ -325,30 +333,6 @@ class v2c_trydan extends eqLogic {
         return $this->callAPI('POST', '/device/set_rfid?deviceId=' . $deviceId . '&value=0');
     }
 
-    public function getRFIDList() {
-        $deviceId = $this->getConfiguration('charger_id');
-        $response = $this->callAPI('GET', '/device/rfid_list?deviceId=' . $deviceId);
-        $this->updateCommand('rfid_list', json_encode($response));
-        return $response;
-    }
-
-    public function addRFID($name) {
-        $deviceId = $this->getConfiguration('charger_id');
-        return $this->callAPI('POST', '/device/rfid_add?deviceId=' . $deviceId . '&tag=' . urlencode($name));
-    }
-
-    public function deleteRFID($name) {
-        $deviceId = $this->getConfiguration('charger_id');
-        return $this->callAPI('POST', '/device/rfid_delete?deviceId=' . $deviceId . '&tag=' . urlencode($name));
-    }
-
-    public function getRFIDState() {
-        $deviceId = $this->getConfiguration('charger_id');
-        $response = $this->callAPI('GET', '/device/rfid_state?deviceId=' . $deviceId);
-        $this->updateCommand('rfid_state', $response['enabled'] ?? false);
-        return $response;
-    }
-
 
     // Méthodes Profils de puissance
     public function savePowerProfile($name, $mode, $value) {
@@ -405,8 +389,63 @@ class v2c_trydan extends eqLogic {
     public function getSessionStats() {
         $deviceId = $this->getConfiguration('charger_id');
         $response = $this->callAPI('GET', '/stadistic/device?deviceId=' . $deviceId);
-        $this->updateCommand('stats_last_sessions', json_encode($response));
-        return $response;
+        
+        // Trier les sessions par date (la plus récente en premier)
+        usort($response, function($a, $b) {
+            $dateA = new DateTime($a['startChargeDate']);
+            $dateB = new DateTime($b['startChargeDate']);
+            return $dateB <=> $dateA;
+        });
+        
+        // Limiter aux 5 dernières sessions
+        $response = array_slice($response, 0, 5);
+        
+        // Mettre à jour les commandes d'information pour chaque session
+        foreach ($response as $index => $session) {
+            $prefix = 'session_' . $index . '_';
+            $startDate = new DateTime($session['startChargeDate']);
+            $endDate = new DateTime($session['endChargeDate']);
+            
+            // Mise à jour des commandes
+            $this->updateCommand($prefix . 'debut', $startDate->format('H:i'));
+            $this->updateCommand($prefix . 'fin', $endDate->format('H:i'));
+            $this->updateCommand($prefix . 'duree', $endDate->diff($startDate)->format('%H:%I'));
+            $this->updateCommand($prefix . 'energie', $session['energy']);
+            $this->updateCommand($prefix . 'cout', $session['cost']);
+            $this->updateCommand($prefix . 'badge', $session['rfidName'] ?? '');
+            $this->updateCommand($prefix . 'message', $session['message'] ?? '');
+        }
+        
+        // Effacer les valeurs des sessions plus anciennes si moins de 5 sessions
+        for ($i = count($response); $i < 5; $i++) {
+            $prefix = 'session_' . $i . '_';
+            $this->updateCommand($prefix . 'debut', '');
+            $this->updateCommand($prefix . 'fin', '');
+            $this->updateCommand($prefix . 'duree', '');
+            $this->updateCommand($prefix . 'energie', 0);
+            $this->updateCommand($prefix . 'cout', 0);
+            $this->updateCommand($prefix . 'badge', '');
+            $this->updateCommand($prefix . 'message', '');
+        }
+        
+        // Conserver aussi l'ancien format pour compatibilité
+        $formattedSessions = array_map(function($session) {
+            $startDate = new DateTime($session['startChargeDate']);
+            $endDate = new DateTime($session['endChargeDate']);
+            
+            return [
+                'debut' => $startDate->format('H:i'),
+                'fin' => $endDate->format('H:i'),
+                'duree' => $endDate->diff($startDate)->format('%H:%I'),
+                'energie' => $session['energy'],
+                'cout' => $session['cost'],
+                'badge' => $session['rfidName'] ?? '',
+                'message' => $session['message'] ?? ''
+            ];
+        }, $response);
+        
+        $this->updateCommand('stats_last_sessions', json_encode($formattedSessions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        return $formattedSessions;
     }
 }
 
@@ -480,30 +519,11 @@ class v2c_trydanCmd extends cmd {
             case 'rfid_enable':
                 $eqLogic->enableRFID();
                 sleep(2);
-                $eqLogic->getRFIDState();
-                $eqLogic->getRFIDList();
                 break;
 
             case 'rfid_disable':
                 $eqLogic->disableRFID();
                 sleep(2);
-                $eqLogic->getRFIDState();
-                break;
-
-            case 'rfid_add':
-                if (isset($_options['title']) && !empty($_options['title'])) {
-                    $eqLogic->addRFID($_options['title']);
-                    sleep(2);
-                    $eqLogic->getRFIDList();
-                }
-                break;
-
-            case 'rfid_delete':
-                if (isset($_options['title']) && !empty($_options['title'])) {
-                    $eqLogic->deleteRFID($_options['title']);
-                    sleep(2);
-                    $eqLogic->getRFIDList();
-                }
                 break;
 
             // Commandes profils de puissance

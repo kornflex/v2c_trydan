@@ -64,8 +64,6 @@ Le plugin créera automatiquement toutes les commandes nécessaires.
 
 ### Commandes Info principales
 - **Connecté** : État de connexion de la borne
-- **RFID activé** : État d'activation du module RFID
-- **Liste badges RFID** : Liste des badges RFID enregistrés
 - **État** : État actuel de la borne
 - **Puissance** : Puissance de charge (kW)
 - **Énergie** : Énergie totale (kWh)
@@ -92,12 +90,26 @@ Le plugin créera automatiquement toutes les commandes nécessaires.
 - **Charges totales** : Nombre total de sessions
 - **Dernières sessions** : Historique des charges (JSON)
 
+### Commandes Info sessions de charge
+Pour chacune des 5 dernières sessions (de 0 à 4, où 0 est la plus récente) :
+- **session_X_debut** : Heure de début de la charge (HH:mm)
+- **session_X_fin** : Heure de fin de la charge (HH:mm)
+- **session_X_duree** : Durée de la charge (HH:MM)
+- **session_X_energie** : Énergie consommée (kWh)
+- **session_X_cout** : Coût de la session (€)
+- **session_X_badge** : Badge RFID utilisé
+- **session_X_message** : Message associé à la session
+
+Exemple d'utilisation dans les scénarios :
+```
+SI [Borne][session_0_energie] > 10
+ALORS Envoyer notification "Charge importante : [Borne][session_0_energie] kWh"
+```
+
 ### Commandes Action
 - **Rafraîchir** : Mise à jour manuelle
 - **Activer RFID** : Active le module RFID
 - **Désactiver RFID** : Désactive le module RFID
-- **Ajouter badge RFID** : Mode apprentissage d'un nouveau badge
-- **Supprimer badge RFID** : Supprime un badge existant
 - **Démarrer** : Démarrer la charge
 - **Arrêter** : Arrêter la charge
 - **Pause** : Mettre en pause
@@ -149,19 +161,6 @@ ALORS [Borne Garage][Arrêter]
 ET Envoyer notification "Charge arrêtée à 50 kWh"
 ```
 
-### Scénarios RFID avancés
-
-#### Enregistrement automatique de badge
-```
-A PROGRAMMATION
-# Le matin à 9h
-[Borne Garage][Activer RFID]
-[Borne Garage][Apprendre RFID] = "Badge Visiteur"
-# Attendre 30 secondes que le badge soit présenté
-PAUSE 30
-[Borne Garage][Désactiver RFID]
-```
-
 ### Scénarios de gestion de puissance
 
 #### Profil été/hiver
@@ -176,27 +175,6 @@ SINON [Borne Garage][Sauver profil] = "Hiver|dynamic|16"
 SI [Borne Garage][Puissance maison] > 8.0
 ALORS [Borne Garage][Régler intensité] = 16
 SINON [Borne Garage][Régler intensité] = 32
-```
-
-### Scénarios RFID
-
-#### Activation temporaire du RFID
-```
-SI [Borne Garage][État] == "connected"
-ALORS
-  [Borne Garage][Activer RFID]
-  PAUSE 300 # 5 minutes
-  [Borne Garage][Désactiver RFID]
-```
-
-#### Gestion des badges
-```
-A PROGRAMMATION
-# Tous les lundis à 8h
-[Borne Garage][Ajouter badge RFID] = "Badge Visiteur"
-PAUSE 30
-SI [Borne Garage][Liste badges RFID] contient "Badge Visiteur"
-ALORS Envoyer notification "Badge ajouté avec succès"
 ```
 
 ### Scénarios de maintenance

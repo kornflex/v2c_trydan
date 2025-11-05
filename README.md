@@ -7,10 +7,6 @@ Plugin pour piloter et superviser les bornes de recharge V2C Trydan via l'API Cl
 Le plugin utilise les API V2C Cloud suivantes :
 - /device/currentstatecharge - État actuel de la charge
 - /device/connected - État de connexion de la borne
-- /device/rfid_state - État du module RFID
-- /device/rfid_list - Liste des badges RFID
-- /device/rfid_add - Ajout d'un badge RFID
-- /device/rfid_delete - Suppression d'un badge RFID
 - /device/set_rfid - Activation/désactivation RFID
 - /version - Version du firmware
 - /device/startcharge - Démarrer la charge
@@ -60,6 +56,13 @@ Le plugin utilise les API V2C Cloud suivantes :
 - Nombre total de sessions de charge
 - Historique des dernières sessions
 - Coûts et économies réalisées
+- Détails des 5 dernières sessions de charge avec pour chacune :
+  - Heure de début et de fin
+  - Durée de la charge
+  - Énergie consommée
+  - Coût de la session
+  - Badge RFID utilisé (si applicable)
+  - Message associé
 
 ## Installation
 
@@ -78,8 +81,7 @@ Le plugin utilise les API V2C Cloud suivantes :
 3. Renseignez l'ID de votre chargeur
 4. Choisissez la fréquence de rafraîchissement (5min, 15min ou horaire)
 
-### Configuration des badges RFID
-Activez la fonctionnalité RFID dans l'interface
+
 
 
 ### Configuration des profils de puissance

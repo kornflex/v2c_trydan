@@ -301,4 +301,4 @@ Si vous découvrez un bug ou une fonctionnalité manquante, vous pouvez contribu
 
 ## 📜 Licence
 
-Ce plugin est distribué sous licence **AGPL-3.0**.
+Ce plugin est distribué sous licence **GPL-3.0**.
